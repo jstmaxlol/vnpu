@@ -8,8 +8,8 @@ Written in tha C programming language
 - 2 Registers, Limited to Integers and simple mathematical operations \
   and comparisons - Both (AX, BX) have 4 bits of decimal memory - Though \
   every non-binary assignment operation will result in an instant HALT \
-  of the entire system (VNPU) \
-- No Random Access Memory, limited to a bi-dimensional array of 4+4 bits \
+  of the entire system (VNPU)
+- No Random Access Memory, limited to a bi-dimensional array of 4+4 bits
 - No programmable interface, limited to simple instruction calls \
   as `+ 1 1` then `@` which will output `2` \
   An important sidenote that must be made is that after a call like the \
