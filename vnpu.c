@@ -123,19 +123,19 @@ int BX[4] = {0,0,0,0};
 
 int main(void)
 {
-	w(2450);
+	w(1337);
 	//
 	signal(SIGINT, HandleSignalInterrupt);
 
 	//
 	printf("VNPU => Initialization finished.\n");
-	w(1000);
+	w(337);
 	printf("VNPU => Enable logging to console? (y/N)\n: ");
 	scanf("%c", &EnableLogBuffer);
 
 	if (EnableLogBuffer == 'y' || EnableLogBuffer == 'Y')
 	{
-		w(1000);
+		w(1001);
 		log_flag = true;
 	}
 
@@ -144,18 +144,18 @@ int main(void)
 	while (HALT == false)
 	{
 		//
-		w(1000);
+		w(1001);
 		if (log_flag) printf("VNPU => Waiting for instructions.\n");
-		w(1000);
+		w(1001);
 		printf("> ");
-		// Read instructions
+		// Read instruction (F)
 		scanf("%s", InstructionBuffer);
 		
 		char InstructionFound = FindInstruction(InstructionBuffer);
 		if (InstructionFound == 'e')
 		{
-			w(1000);
-			if (log_flag) printf("VNPU => ERROR: No instruction was provided.\nHalting.\n");
+			w(1001);
+			if (log_flag) printf("VNPU => ERROR: An illegal instruction was provided.\n\t=> Halting.\n");
 			HALT = true;
 		}
 
@@ -185,8 +185,8 @@ int main(void)
 		}
 		if (log_flag) printf("VNPU => First edge-case for instructions passed\n");
 		//
-		else if (!isspace(InstructionBuffer[1]) && isspace(InstructionBuffer[2]) && isspace(InstructionBuffer[3]) &&
-				 isspace(InstructionBuffer[4]) && isspace(InstructionBuffer[5]) )
+		if (!isspace(InstructionBuffer[1]) && isspace(InstructionBuffer[2]) &&
+            isspace(InstructionBuffer[3]) && isspace(InstructionBuffer[4]) && isspace(InstructionBuffer[5]) )
 		{
 			instr = InstructionBuffer[1];
 			if (instr == '.')
@@ -206,15 +206,7 @@ int main(void)
 		if (log_flag) printf("VNPU => Running last sanity check\n");
 		
 		//
-		else
-		{
-			w(1000);
-			if (log_flag) printf("VNPU => ERROR: An illegal instruction was provided.\nHalting.\n");
-			HALT = true;
-		}
-
-		//
-		if (log_flag) printf("Sanity check passed\nEntered phase 3 of runtime");
+		if (log_flag) printf("Sanity check passed\nEntered phase 3 of runtime\n");
 
 		//
 		w(1000);
@@ -248,23 +240,15 @@ void w(int millisec)
 // Misleading function name
 char FindInstruction(char InstrBuff[])
 {
-    if (InstrBuff[1] == '+')
+    switch (InstrBuff[1])
     {
-        return '0';
+        case '+': case '-': case '*':
+        case '/': case 'M': case '?':
+        case '>': case '<': case '!':
+            return '0';
+        default: 
+            return 'e';
     }
-    else if (InstrBuff[1] == '-')
-    {
-        return '0';
-    }
-    else if (InstrBuff[1] == '*')
-    {
-        return '0';
-    }
-    else if (InstrBuff[1] == '/')
-    {
-        return '0';
-    }
-	return 'e';
 }
 
 int dec2bin(int DEC_VAL)
@@ -327,6 +311,7 @@ void dec2bin2mem(int DEC_VAL) {
 
 void HandleSignalInterrupt(int sig)
 {
+    sig = sig; // just to compile with -Wall -Wextra -pedantic with 0 warnings
 	printf("VNPU => Are you sure you want to exit?\n\t=> If so please press ^C again.");
     //              kihh me pleahh
 }
@@ -387,7 +372,7 @@ bool HandleInstruction(char instr, char com1, char com2)
 		NotEqInstruction(com1, com2);
 		if (code != 0) return false;
 		else return true;
-	}
+	} return false;
 }
 
 //
