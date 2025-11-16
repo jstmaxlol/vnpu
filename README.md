@@ -1,4 +1,3 @@
-
 # VirtNanoProUni
 A virtual half-byte sized processing unit that counts a whopping 12 instructions. \
 Written in tha C programming language
@@ -37,33 +36,5 @@ Written in tha C programming language
 `@`: Prints X value (Example: `@ A` will print the contents of register AX) \
 `.`: Halts immediately
 
-<!--
-// w ( int sec )
-// ⤷ Syntax sugar / Wrapper for sleep() ( from <unistd.h> )
-
-// FindInstruction ( char InstrBuff[] )
-// ⤷ Simple helper to check if the user's input contains a valid
-//   call to an instruction or not and returns a value.
-// NOTE: MISLEADING FUNCTION NAME. VERY MISLEADING.
-
-// dec2bin ( int DEC_VAL )
-// ⤷ Converts a decimal value to binary and returns it
-
-// memBin2dec ( int mem[2][4] )
-// ⤷ Converts a memory binary to decimal and returns it
-
-// dec2bin2reg ( int DEC_VAL, int reg[4] )
-// ⤷ Same as the last function but instead of returning the
-//    converted value it stores it into a specific register ( which is: (int)[4] )
-
-// dec2bin2mem ( int DEC_VAL, int mem[2][4] )
-// ⤷ Same as the last function but for memory ( which is: (int)[2][4] )
-
-// HandleSignalInterrupt ( int sig )
-// ⤷ For the signal() call in main()
-
-// HandleInstruction ( char instr, 
-//                     char com1, char com2
-//					   int AX, int BX)
-// ⤷ This helper is the one that actually does the calls to the virtual instructions
--->
+&nbsp;
+###### jstmax! : <jstmaxlol@disroot.org>, <maxwasmailed@proton.me>
