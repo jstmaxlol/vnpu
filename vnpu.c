@@ -77,7 +77,7 @@ void dec2bin2mem(int DEC_VAL);
 
 // HandleSignalInterrupt ( int sig )
 // ⤷ For the signal() call in main()
-void HandleSignalInterrupt(int sig);
+void SigIntHandler(int sig);
 
 // HandleInstruction ( char instr, 
 //                     char com1,
@@ -123,9 +123,9 @@ int BX[4] = {0,0,0,0};
 
 int main(void)
 {
-	w(1337);
+	w(337);
 	//
-	signal(SIGINT, HandleSignalInterrupt);
+	signal(SIGINT, SigIntHandler);
 
 	//
 	printf("VNPU => Initialization finished.\n");
@@ -135,7 +135,7 @@ int main(void)
 
 	if (EnableLogBuffer == 'y' || EnableLogBuffer == 'Y')
 	{
-		w(1001);
+		w(1000);
 		log_flag = true;
 	}
 
@@ -144,9 +144,9 @@ int main(void)
 	while (HALT == false)
 	{
 		//
-		w(1001);
+		w(337);
 		if (log_flag) printf("VNPU => Waiting for instructions.\n");
-		w(1001);
+		w(1000);
 		printf("> ");
 		// Read instruction (F)
 		scanf("%s", InstructionBuffer);
@@ -154,7 +154,7 @@ int main(void)
 		char InstructionFound = FindInstruction(InstructionBuffer);
 		if (InstructionFound == 'e')
 		{
-			w(1001);
+			w(1000);
 			if (log_flag) printf("VNPU => ERROR: An illegal instruction was provided.\n\t=> Halting.\n");
 			HALT = true;
 		}
@@ -309,11 +309,35 @@ void dec2bin2mem(int DEC_VAL) {
     }
 }
 
-void HandleSignalInterrupt(int sig)
+void SigIntHandler(int sig)
 {
-    sig = sig; // just to compile with -Wall -Wextra -pedantic with 0 warnings
-	printf("VNPU => Are you sure you want to exit?\n\t=> If so please press ^C again.");
-    //              kihh me pleahh
+    sig = sig; // just to compile with -Wall -Wextra -pedantic with 0 warnings.
+               // maybe i am wrong but signal() requires the handler
+               // function to have 'int sig' - afaik, obviously.
+	printf("VNPU => SIGINT intercepted.\n\t=> Exit? (y|Y[e|E[s|S]]/n|N[o|O]) ");
+    char ret[8];
+    scanf("%s", ret);
+    if (strcmp(ret, "Y") == 0 || strcmp(ret, "ye") == 0 ||
+        strcmp(ret, "yES") == 0 || strcmp(ret, "y") == 0 ||
+        strcmp(ret, "YES") == 0 || strcmp(ret, "yEs") == 0 ||
+        strcmp(ret, "YE") == 0 || strcmp(ret, "YEs") == 0 ||
+        strcmp(ret, "yeS") == 0 || strcmp(ret, "Ye") == 0 ||
+        strcmp(ret, "YeS") == 0 || strcmp(ret, "yes") == 0 ||
+        strcmp(ret, "yE") == 0 || strcmp(ret, "Yes") == 0
+    ) {
+        HALT = true;
+        exit(0);
+    }
+    else if (strcmp(ret, "n") == 0 || strcmp(ret, "no") == 0 ||
+               strcmp(ret, "N") == 0 || strcmp(ret, "No") == 0 ||
+               strcmp(ret, "NO") == 0 || strcmp(ret, "nO") == 0
+    ) {
+        printf("VNPU => Continuing execution.\n");  
+    } else
+    {
+        printf("VNPU => Unknown option entered: \"%s\"\n", ret);
+        SigIntHandler(0);
+    }
 }
 
 bool HandleInstruction(char instr, char com1, char com2)
