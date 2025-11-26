@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <signal.h>
 
-#define INSTR_LEN_LIMIT 6
+#define INSTR_LEN_LIMIT 8
 
 /* 
 	VirtNanoProUni
@@ -149,7 +149,8 @@ int main(void)
 		w(1000);
 		printf("> ");
 		// Read instruction (F)
-		scanf("%s", InstructionBuffer);
+  fgets(InstructionBuffer, sizeof(InstructionBuffer), stdin);
+		//scanf("%s", InstructionBuffer);
 		
 		char InstructionFound = FindInstruction(InstructionBuffer);
 		if (InstructionFound == 'e')
