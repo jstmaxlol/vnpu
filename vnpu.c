@@ -108,7 +108,7 @@ bool HALT = false; // 'false' for ! halted; 'true' for halted
 bool log_flag = false;
 
 char EnableLogBuffer = 'n';
-char InstructionBuffer[INSTR_LEN_LIMIT] = "\0";
+char InstructionBuffer[INSTR_LEN_LIMIT];
 char instr;
 char com1;
 char com2;
@@ -149,8 +149,10 @@ int main(void)
 		w(1000);
 		printf("> ");
 		// Read instruction (F)
-  fgets(InstructionBuffer, sizeof(InstructionBuffer), stdin);
+        getchar(); // Consume the last \n from before
+        fgets(InstructionBuffer, INSTR_LEN_LIMIT, stdin);
 		//scanf("%s", InstructionBuffer);
+        printf("%s\n", InstructionBuffer);
 		
 		char InstructionFound = FindInstruction(InstructionBuffer);
 		if (InstructionFound == 'e')
