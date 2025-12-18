@@ -6,34 +6,35 @@
 #include <ctype.h>
 #include <signal.h>
 
+// MACROS
+//
 // INSTR_LEN_LIMIT is 7 bytes-long: "X Y Z" (6 characters + \0)
 #define INSTR_LEN_LIMIT 7
+// VNPU_WORD_SIZE
+#define VNPU_WORD_SIZE 8
 
 /* 
 	VirtNanoProUni
-	- A virtual half-byte sized processing unit that counts a whopping 12 instructions.
+	- A virtual, 1 byte-sized processing unit that counts a whopping 12 instructions.
 	- Written in C programming language
 	========================
 	Virtual Nano Processing Unit specifications
-	- Limited to c.ca 1 Hz or 1 Instruction/Second
+	- Limited to c.ca 1 Instruction / 337 ms
 	- 2 Registers, Limited to Integers and simple mathematical operations
-	  and comparisons - Both (AX, BX) have 4 bits of decimal memory - Though
+	  and comparisons - Both (AX, BX) have 8 bits of decimal memory - Though
 	  every non-binary assignment operation will result in an instant HALT
 	  of the entire system (VNPU)
-	- No Random Access Memory, limited to a bi-dimensional array of 4+4 bits
+	- No Random Access Memory, limited to a bi-dimensional array of 8+8 bits
 	- No programmable interface, limited to simple instruction calls
-	  as '+ 1 1' then '@' which will output '2'
-	  An important sidenote that must be made is that after a call like the
-	  aforementioned is made to the NPU, the result of said operation will be
-	  temporarily stored into the first non-occupied slot of virtual memory
-	  (the bi-dimensional array of 4+4 bits) in binary
+      as '+ 1 1' then '@ A' which will output '2' - This also shows how all
+      mathematical operations executed will store their result in the AX register
 	========================
 	VNPU Instruction Set (v'NIS)
 	-----REGISTERS------
 	'A': Register AX
 	'B': Register BX
 	-----OPERATIONS-----
-	'+': Adds X by Y. (Example: '+ A B' adds register AX and BX)
+	'+': Adds X by Y. (Example: '+ A B' adds register AX and BX and stores the result in AX)
 	'-': Subtracts X by Y
 	'*': Multiplies X by Y
 	'/': Divides X by Y (Note: WILL halt if a division by 0 operation is attempted)
@@ -67,10 +68,10 @@ int dec2bin(int DEC_VAL);
 // ⤷ Converts a memory binary to decimal and returns it
 int memBin2dec();
 
-// dec2bin2reg ( int reg[4], int DEC_VAL )
+// dec2bin2reg ( int reg[VNPU_WORD_SIZE], int DEC_VAL )
 // ⤷ Same as the last function but instead of returning the
 //   converted value it stores it into a specific register ( which is: (int)[4] )
-void dec2bin2reg(int reg[4], int DEC_VAL);
+void dec2bin2reg(int reg[VNPU_WORD_SIZE], int DEC_VAL);
 
 // dec2bin2mem ( int DEC_VAL )
 // ⤷ Same as the last function but for memory ( which is: (int)[2][4] )
@@ -104,7 +105,8 @@ void PrntInstruction(char com1);
 void HaltInstruction();
 
 // OTHER FUNCTIONS (HELPERS)
-void printpenis();
+void printUsage();
+int ResolveOperand(char c);
 
 // GLOBAL STATE VARIABLES
 //
@@ -117,128 +119,86 @@ char instr;
 char com1;
 char com2;
 
-int MEM[2][4] =	
+int MEM[2][VNPU_WORD_SIZE] = // The 2 MEMory slots' bit-width is equal to the PU's WORD size
 {
-	{0,0,0,0},
-	{0,0,0,0}
+	{0},
+	{0}
 };
-int AX[4] = {0,0,0,0};
-int BX[4] = {0,0,0,0};
+int AX[VNPU_WORD_SIZE] = {0};
+int BX[VNPU_WORD_SIZE] = {0};
 
 int main(void)
 {
-	w(337);
-	//
-	signal(SIGINT, SigIntHandler);
+    w(337);
+    signal(SIGINT, SigIntHandler);
 
-	//
-	printf("VNPU => Initialization finished.\n");
-	w(337);
-	printf("VNPU => Enable logging to console? (y/N)\n: ");
-	scanf("%c", &EnableLogBuffer);
+    printf("VNPU => Initialization finished.\n");
+    w(337);
+    printf("VNPU => Enable logging to console? (y/N)\n: ");
 
-	if (EnableLogBuffer == 'y' || EnableLogBuffer == 'Y')
-	{
-		w(337);
-		log_flag = true;
-	}
+    scanf(" %c", &EnableLogBuffer);
 
-	//
-	if (log_flag) printf("VNPU => Entered phase 1 of runtime.\n");
-loop_b:
-	while (HALT == false)
-	{
-		//
-		w(337);
-		if (log_flag) printf("VNPU => Waiting for instructions.\n");
-		w(337);
-		printf("> ");
-		// Read instruction (F)
-        getchar(); // Consume the last \n from before
-        fgets(InstructionBuffer, INSTR_LEN_LIMIT, stdin);
-		
-		char InstructionFound = FindInstruction(InstructionBuffer);
-		if (InstructionFound == 'e')
-		{
-			w(337);
-			if (log_flag) printf("VNPU => ERROR: An illegal instruction was provided.\n\t=> Halting.\n");
-			HALT = true;
-            goto loop_b;
-		}
+    if (EnableLogBuffer == 'y' || EnableLogBuffer == 'Y')
+        log_flag = true;
 
-		//
-		if (log_flag) printf("STATUS => Entered phase 2 of runtime\n");
-		w(337);
-		if (log_flag) printf("VNPU => Checking instruction buffer string ..\n");
+    if (log_flag)
+        printf("VNPU => Entered phase 1 of runtime.\n");
 
-		//
-		if (!isspace(InstructionBuffer[2]) && !isspace(InstructionBuffer[3]))
-		{
-			w(337);
-			if (log_flag) printf("VNPU => ERROR: An illegal instruction was provided.\nHalting.\n");
-			HALT = true;
-            goto loop_b;
-		}
-		if (log_flag) printf("VNPU => Edge-case instruction sanity checks\n");
-		//
-		if (!isspace(InstructionBuffer[0]) && isspace(InstructionBuffer[1]) &&
-            isspace(InstructionBuffer[2]) && isspace(InstructionBuffer[3]) && isspace(InstructionBuffer[4]))
-		{
-			instr = InstructionBuffer[0];
-			if (instr == '.')
-			{
-				if (log_flag) printf("VNPU => Conditions met. Running HaltInstruction()\n");
-				HaltInstruction();
-                goto loop_b;
-			}
-            else if (instr == 'H')
-            {
-                if (log_flag) printf("VNPU => Conditions met. Printing v'NIS\n");
-                printpenis();
-                goto loop_b;
-            }
-		} else if (!isspace(InstructionBuffer[0]) && isspace(InstructionBuffer[1]) &&
-                   !isspace(InstructionBuffer[2]) && isspace(InstructionBuffer[3]) && isspace(InstructionBuffer[4]))
+    while (!HALT)
+    {
+        if (log_flag)
+            printf("VNPU => Waiting for instructions.\n");
+
+        printf("> ");
+
+        if (!fgets(InstructionBuffer, INSTR_LEN_LIMIT, stdin))
+            break;
+        if (InstructionBuffer[0] == '\n' || InstructionBuffer[0] == '\0') continue;
+
+
+        char InstructionFound = FindInstruction(InstructionBuffer);
+        if (InstructionFound == 'e')
+        {
+            printf("VNPU => ERROR: An illegal instruction was provided.\n");
+            HALT = true;
+            break;
+        }
+
+        /* single-char commands: '.', 'H' */
+        if (InstructionBuffer[0] != '\0' &&
+            (InstructionBuffer[1] == '\n' || InstructionBuffer[1] == '\0'))
         {
             instr = InstructionBuffer[0];
-            com1 = InstructionBuffer[2];
-            if (log_flag) printf("VNPU => Conditions met. Running PrntInstruction()\n");
-            PrntInstruction(com1);
+
+            if (instr == '.')
+            {
+                HaltInstruction();
+                break;
+            }
+            else if (instr == 'H')
+            {
+                printUsage();
+                continue;
+            }
         }
-		if (log_flag) printf("VNPU => Last edge-cases for instructions passed\n");
-		w(337);
 
-		//
-		if (log_flag) printf("VNPU => All edge-cases passed successfully\n");
+        /* normal X Y Z instruction */
+        instr = InstructionBuffer[0];
+        com1  = InstructionBuffer[2];
+        com2  = InstructionBuffer[4];
 
-		//
-		w(337);
-		if (log_flag) printf("VNPU => Running last sanity check\n");
-		
-		//
-		if (log_flag) printf("VNPU => Sanity check passed\nSTATUS => Entered phase 3 of runtime\n");
+        if (HandleInstruction(instr, com1, com2) == false)
+        {
+            printf("VNPU => ERROR: An illegal instruction was provided.\n");
+            HALT = true;
+            break;
+        }
+    }
 
-		//
-		w(337);
-		instr = InstructionBuffer[0]; // 1
-		com1  = InstructionBuffer[2]; // 3
-		com2  = InstructionBuffer[4]; // 5
+    if (log_flag)
+        printf("VNPU => Exiting with code 0\n");
 
-		w(337);
-		if (HandleInstruction(instr, com1, com2) != false)
-		{
-			w(337);
-			printf("VNPU => ERROR: An illegal instruction was provided.\n");
-			HALT = true;
-            goto loop_b;
-		}
-
-	}
-
-	w(337);
-	if (log_flag) printf("VNPU => Exiting with code 0\n");
-	// TODO: Clean up if dynamic memory was allocated
-	return 0; // Technically frees memory too..? Or maybe just not dynamic one I don't know :o
+    return 0;
 }
 
 //
@@ -248,7 +208,7 @@ void w(int millisec)
 	usleep(microsec);
 }
 
-// Misleading function name
+// TODO: Misleading function name
 char FindInstruction(char InstrBuff[])
 {
     switch (InstrBuff[0])
@@ -256,7 +216,7 @@ char FindInstruction(char InstrBuff[])
         case '+': case '-': case '*':
         case '/': case 'M': case '?':
         case '>': case '<': case '!':
-        case 'H':
+        case '@': case '.': case 'H':
             return '0';
         default: 
             return 'e';
@@ -265,48 +225,49 @@ char FindInstruction(char InstrBuff[])
 
 int dec2bin(int DEC_VAL)
 {
-	int bin_val = 0;
-	int multiplier = 1;
-	int number = DEC_VAL;
+    int bin_val = 0;
+    int multiplier = 1;
+    int number = DEC_VAL;
     int remainder = 0;
-	while (DEC_VAL > 0)
-	{
-		remainder = number % 2;
-		bin_val = (bin_val + (remainder * multiplier));
-		multiplier = (multiplier * 10);
-		number = (number / 2);
-	}
-	return bin_val;
+
+    while (number > 0)
+    {
+        remainder = number % 2;
+        bin_val += remainder * multiplier;
+        multiplier *= 10;
+        number /= 2;
+    }
+    return bin_val;
 }
 
-int bin2dec(int reg[4])
+int bin2dec(int reg[VNPU_WORD_SIZE])
 {
-	int value = 0;
-	for (int i = 1; i < 4; ++i)
-	{
-		value = value * 2 + reg[i];
-	}
-	return value;
+    int value = 0;
+    for (int i = 0; i < VNPU_WORD_SIZE; ++i)
+    {
+        value = value * 2 + reg[i];
+    }
+    return value;
 }
 
-
-int memBin2dec() {
+int memBin2dec(void)
+{
     int val = 0;
     for (int i = 0; i < 2; ++i)
     {
-        for (int j = 0; j < 4; ++j)
+        for (int j = 0; j < VNPU_WORD_SIZE; ++j)
         {
-            val = val * 2 + MEM[i][j];
+            val = (val << 1) | MEM[i][j];
         }
     }
     return val;
 }
 
-void dec2bin2reg(int reg[4], int DEC_VAL) // dst, src
+void dec2bin2reg(int reg[VNPU_WORD_SIZE], int DEC_VAL) // dst, src
 {
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < VNPU_WORD_SIZE; ++i)
     {
-        reg[3-i] = DEC_VAL % 2;  // LSB goes to last index
+        reg[(VNPU_WORD_SIZE - 1) - i] = DEC_VAL % 2;  // LSB goes to last index
         DEC_VAL = DEC_VAL / 2;
     }
 }
@@ -314,9 +275,9 @@ void dec2bin2reg(int reg[4], int DEC_VAL) // dst, src
 void dec2bin2mem(int DEC_VAL) {
     for (int i = 1; i >= 0; --i)
     {
-        for (int j = 3; j >= 0; --j) {
-            MEM[i][j] = DEC_VAL % 2;
-            DEC_VAL /= 2;
+        for (int j = VNPU_WORD_SIZE - 1; j >= 0; --j) {
+            MEM[i][j] = DEC_VAL & 1;
+            DEC_VAL >>= 2;
         }
     }
 }
@@ -352,9 +313,22 @@ void SigIntHandler(int sig)
     }
 }
 
+int ResolveOperand(char c)
+{
+    if (isdigit((unsigned char)c))
+        return c - '0';
+
+    if (c == 'A')
+        return bin2dec(AX);
+
+    if (c == 'B')
+        return bin2dec(BX);
+
+    return -1; // invalid shid
+}
+
 bool HandleInstruction(char instr, char com1, char com2)
 {
-	int code = 1;
 	if (instr == '+')
     {
 		int code = AddInstruction(com1, com2);
@@ -409,9 +383,14 @@ bool HandleInstruction(char instr, char com1, char com2)
 		if (code != 0) return false;
 		else return true;
 	}
+    else if (instr == '@')
+    {
+        PrntInstruction(com1);
+        return true;
+    }
     else if (instr == 'H')
     {      
-        printpenis();
+        printUsage();
         return true;
     }
     return false;
@@ -420,113 +399,93 @@ bool HandleInstruction(char instr, char com1, char com2)
 //
 int AddInstruction(char com1, char com2)
 {
-	w(337);
-	int result = com1 + com2;
-	dec2bin2mem(result);
-	return result;
+    w(337);
+
+    int v1 = ResolveOperand(com1);
+    int v2 = ResolveOperand(com2);
+    if (v1 < 0 || v2 < 0) return 1;
+
+    int result = v1 + v2;
+
+    dec2bin2reg(AX, result);
+    dec2bin2mem(result);
+
+    return 0;
 }
+
 int SubInstruction(char com1, char com2)
 {
-	w(337);
-	int result = com1 - com2;
-	dec2bin2mem(result);
-	return result;
+    w(337);
+
+    int v1 = ResolveOperand(com1);
+    int v2 = ResolveOperand(com2);
+    if (v1 < 0 || v2 < 0) return 1;
+
+    int result = v1 - v2;
+
+    dec2bin2reg(AX, result);
+    dec2bin2mem(result);
+
+    return 0;
 }
 int MulInstruction(char com1, char com2)
 {
-	w(337);
-	int result = com1 * com2;
-	dec2bin2mem(result);
-	return result;
+    w(337);
+
+    int v1 = ResolveOperand(com1);
+    int v2 = ResolveOperand(com2);
+    if (v1 < 0 || v2 < 0) return 1;
+
+    int result = v1 * v2;
+
+    dec2bin2reg(AX, result);
+    dec2bin2mem(result);
+
+    return 0;
 }
 int DivInstruction(char com1, char com2)
 {
 	w(337);
-	if (com2 != 0)
-	{
-		int result = com1 / com2;
-		dec2bin2mem(result);
-		return result;
-	}
-	else
-	{
-		// commented out because is implemented in main()
-		// here just for reference
 
-		// if (log_flag) printf("VNPU => A division by zero was attempted\nHalting.\n");
-		// HALT = true;
-		return 2;
-	}
+    int v1 = ResolveOperand(com1);
+    int v2 = ResolveOperand(com2);
+    if (v1 < 0 || v2 <= 0) return 1;
+
+    int result = v1 / v2;
+
+    dec2bin2reg(AX, result);
+    dec2bin2mem(result);
+
+    return 0;
 }
 int MovInstruction(char com1, char com2)
 {
-	w(337);
-	if (com1 == 'A')
-	{
-		// case: move AX into BX, though..
-		if (com2 != 'B') // ..com2 **MUST** be equal to another register which differs from AX (so BX)
-		{				 //   otherwise there would be no place to move our binary data
-			return 1;
-		}
-		// dec2bin2reg() IS A DESTRUCTIVE FUNCTION!!!
-		// That's why we label cases so there is *NO* confusion.
-		// (And data is safe at runtime)
-		
-		// Convert binary value that is stored into AX to a decimal integer variable
-		// THEN! convert that decimal integer variable to binary once again and drop it into BX
-		int ax_dec = bin2dec(AX);
-		dec2bin2reg(BX, ax_dec);
-		return 0;
-	}
-	else if (com1 == 'B')
-	{
-		// case: move BX into AX, same as last case.
-		w(337);
-		if (com2 != 'A')
-		{
-			return 1;
-		}
-		// Same warning as before applies here too
-		int bx_dec = bin2dec(BX);
-		dec2bin2reg(AX, bx_dec);
-		return 0;
-	}
-	else
-	{
-		// case: move <VAL> into <REG>, of which there are two possible cases.
-		//       but before, we gotta do some sanity checks:
-		
-		// sanity check no.1
-		if (!isdigit(com1))
-		{
-			return 1;
-		}
-		// sanity check no.2
-		if (com1 > 9 || com1 < 0)
-		{
-			return 1;
-		}
-		// sanity check no.3
-		if (com2 != 'A' && com2 != 'B')
-		{
-			return 1;
-		}
+    w(337);
 
-		// sanity checks passed,
-		// now we kick some values into some regz
-		if (com2 == 'A')
-		{
-            int dec = dec2bin(com1);
-			dec2bin2reg(AX, dec);
-		}
-		else if (com2 == 'B')
-		{
-            int dec = dec2bin(com1);
-			dec2bin2reg(BX, dec);
-		}
-		// and that was... the MOV instruction with a lot of limits and sanity checks!
-	}
-	return 1;
+    /* register-to-register */
+    if (com1 == 'A' && com2 == 'B') {
+        int ax_dec = bin2dec(AX);
+        dec2bin2reg(BX, ax_dec);
+        return 0;
+    }
+    if (com1 == 'B' && com2 == 'A') {
+        int bx_dec = bin2dec(BX);
+        dec2bin2reg(AX, bx_dec);
+        return 0;
+    }
+
+    /* immediate-to-register */
+    if (com1 < '0' || com1 > '9') return 1;
+    if (com2 != 'A' && com2 != 'B') return 1;
+
+    int val = com1 - '0';
+
+    if (com2 == 'A')
+        dec2bin2reg(AX, val);
+    else
+        dec2bin2reg(BX, val);
+
+    return 0;
 }
 //
 bool CmpInstruction(char com1, char com2)
@@ -578,7 +537,7 @@ void HaltInstruction()
 	HALT = true;
 }
 
-void printpenis()
+void printUsage()
 {
     printf
     (
@@ -605,3 +564,4 @@ void printpenis()
         "'H': Used to print this IS.\n"
     );
 }
+
