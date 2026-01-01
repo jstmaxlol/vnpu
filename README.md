@@ -1,6 +1,7 @@
 # VirtNanoProUni
 
-- A virtual, 1 byte-sized processing unit that counts a whopping 12 instructions.
+- A virtual, byte-sized processing unit that counts a whopping 12 instructions.
+  technically this is just a glorified accumulator unit but shhhhhh.... :)
 - Written in the *lovely* C programming language
 
 ## Virtual Nano Processing Unit specifications
